@@ -13,7 +13,7 @@ import java.util.Optional;
 
 public interface IFundService {
     void fetchAndSaveAllFundReturns();
-    List<FundInfoDTO> getAllFundReturnsFromDb();
+    List<FundReturnsDTO> getAllFundReturns();
 
     List<FundReturnsDTO> getByFundId(String fundId,LocalDate startDate,LocalDate endDate);
 }

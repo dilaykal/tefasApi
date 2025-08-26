@@ -1,5 +1,6 @@
 package com.dilaykal.repository.impl;
 
+import com.dilaykal.model.DateUtils;
 import com.dilaykal.repository.ITefasApiRepository;
 import org.springframework.stereotype.Repository;
 
@@ -7,6 +8,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 @Repository
@@ -32,10 +34,18 @@ public class TefasApiRepositoryImpl implements ITefasApiRepository {
     @Override
     public HttpResponse<String> getDailyReturnsData() throws Exception {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+
+        //Bugün ve önceki son iş gününü al
         LocalDate today = LocalDate.now();
+        LocalDate lastWorkingDay = today.minusDays(1);
+
+        while (!DateUtils.isWorkingDay(lastWorkingDay)) {
+            lastWorkingDay = lastWorkingDay.minusDays(1);
+        }
+
         String bittarih = today.format(formatter);
-        LocalDate yesterday = today.minusDays(1);
-        String bastarih = yesterday.format(formatter);
+        String bastarih = lastWorkingDay.format(formatter);
+
         String requestBodyHistory = "calismatipi=2&fontip=YAT&sfontur=&kurucukod=&fongrup=" +
                 "&bastarih=" + bastarih + "&bittarih=" + bittarih + "&fonturkod=&fonunvantip=" +
                 "&strperiod=1%2C1%2C1%2C1%2C1%2C1%2C1&islemdurum=1";

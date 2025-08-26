@@ -13,10 +13,4 @@ import java.util.Optional;
 @Repository
 public interface IFundInfoRepository extends JpaRepository<FundInfo, String> {
 
-    @Query("SELECT DISTINCT fi FROM FundInfo fi " +
-            "JOIN FETCH fi.fundReturns fr " +
-            "JOIN FETCH fr.returnTypes rt")
-    List<FundInfo> findAllWithAllDetails();
-
-
 }

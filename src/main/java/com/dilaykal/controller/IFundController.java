@@ -11,7 +11,7 @@ import java.util.Date;
 import java.util.List;
 
 public interface IFundController {
-    ResponseEntity<List<FundInfoDTO>> getFundReturns();
+   ResponseEntity<List<FundReturnsDTO>> getFundReturns();
 
-    List <FundReturnsDTO> getFundReturnsById(String fundId,LocalDate startDate, LocalDate endDate);
+    List<FundReturnsDTO> getFundReturnsById(String fundId,LocalDate startDate, LocalDate endDate);
 }

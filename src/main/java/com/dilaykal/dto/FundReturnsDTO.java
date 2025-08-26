@@ -7,11 +7,16 @@ import lombok.Data;
 
 @Data
 public class FundReturnsDTO {
-    private Integer id;
+    //private Integer id;
     private String fundId;
     private String longName;
     private String fund_desc;
-    private BigDecimal returnValue;
     private LocalDate date;
-    private ReturnTypesDTO returnTypes;
+    private BigDecimal getiri1A;
+    private BigDecimal getiri3A;
+    private BigDecimal getiri6A;
+    private BigDecimal getiri1Y;
+    private BigDecimal getiri_gunluk;
+    //private BigDecimal returnValue;
+    //private ReturnTypesDTO returnTypes;
 }

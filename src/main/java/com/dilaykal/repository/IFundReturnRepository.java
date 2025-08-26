@@ -36,4 +36,11 @@ public interface IFundReturnRepository extends JpaRepository<FundReturns, Intege
             ReturnTypes returnTypes,
             LocalDate date
     );
+
+    @Query(value = "SELECT fr.* FROM fund_returns fr " +
+            "INNER JOIN fund_info fi ON fr.fund_id = fi.fund_id " +
+            "INNER JOIN return_types rt ON fr.return_type_id = rt.id " ,
+            nativeQuery = true)
+    List<FundReturns> findAllWithAllDetails();
+
 }

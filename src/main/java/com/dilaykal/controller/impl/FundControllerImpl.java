@@ -22,23 +22,18 @@ import java.util.Optional;
 public class FundControllerImpl implements IFundController {
     @Autowired
     private IFundService fundService;
+
     @GetMapping("/list-all")
     @Override
-    public ResponseEntity<List<FundInfoDTO>>  getFundReturns() {
-        List<FundInfoDTO> funds =fundService.getAllFundReturnsFromDb();
+    public ResponseEntity<List<FundReturnsDTO>>  getFundReturns() {
+        List<FundReturnsDTO> funds =fundService.getAllFundReturns();
         return ResponseEntity.ok(funds);
     }
-
     @Override
     @GetMapping("/list/{fundId}")
     public List<FundReturnsDTO> getFundReturnsById(@PathVariable String fundId,
                                                    @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-                                                   @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate){
-
-       System.out.println("bugünün tarihi : "+ LocalDate.now());
-       System.out.println("startDate : " + startDate);
-        System.out.println("endDate : " + endDate);
-
+                                                   @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
         return fundService.getByFundId(fundId,startDate,endDate);
     }
 

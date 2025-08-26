@@ -16,7 +16,7 @@ public class DataInitializer implements CommandLineRunner {
         System.out.println("Uygulama başladığında veri yükleme işlemi başlatılıyor...");
         try {
             // API'den veri çekme ve veritabanına kaydetme işlemi burada başlar.
-            fundService.fetchAndSaveAllFundReturns();
+            //fundService.fetchAndSaveAllFundReturns();
             System.out.println("Veri yükleme işlemi tamamlandı.");
         } catch (Exception e) {
             System.err.println("Veri yükleme işlemi sırasında bir hata oluştu: " + e.getMessage());
