@@ -8,7 +8,7 @@ import lombok.Data;
 @Data
 public class FundReturnsDTO {
     //private Integer id;
-    private String fundId;
+    private String fundCode;
     private String longName;
     private String fund_desc;
     private LocalDate date;

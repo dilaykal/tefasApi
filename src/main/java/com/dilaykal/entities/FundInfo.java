@@ -12,8 +12,13 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class FundInfo {
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
     @NonNull
-    private String fund_id;
+    @Column(name = "fund_code")
+    private String fund_code;
+
     @Column(length = 255)
     @NonNull
     private String longName;
@@ -28,11 +33,11 @@ public class FundInfo {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         FundInfo fundInfo = (FundInfo) o;
-        return Objects.equals(fund_id, fundInfo.fund_id);
+        return Objects.equals(fund_code, fundInfo.fund_code);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(fund_id);
+        return Objects.hash(fund_code);
     }
 }

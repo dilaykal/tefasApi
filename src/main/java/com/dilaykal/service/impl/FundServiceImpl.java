@@ -1,8 +1,6 @@
 package com.dilaykal.service.impl;
 
-import com.dilaykal.dto.FundInfoDTO;
 import com.dilaykal.dto.FundReturnsDTO;
-import com.dilaykal.dto.ReturnTypesDTO;
 import com.dilaykal.entities.ReturnTypes;
 import com.dilaykal.entities.FundInfo;
 import com.dilaykal.model.FundPrice;
@@ -17,7 +15,6 @@ import com.dilaykal.service.IFundService;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -89,34 +86,40 @@ public class FundServiceImpl implements IFundService {
                 String fonTurAciklama = fundObject.getString("FONTURACIKLAMA");
 
                 //Fon koduna sahip FundInfo kaydı var mı veritabanında
-                Optional<FundInfo> existingFundInfo= fundInfoRepository.findById(fonKodu);
+                Optional<FundInfo> existingFundInfo= fundInfoRepository.findByFundCode(fonKodu);
                 FundInfo fundInfoData;
                 //Fon veritabanına mevcutsa mevcut kayıt alınır ve değişkene atanır
                 if(existingFundInfo.isPresent()){
                     fundInfoData = existingFundInfo.get();
                 }else{//fon koduna ait kayıt yoksa yeni nesne oluşturup veritabanına kaydedilir
                     fundInfoData = new FundInfo(fonKodu,fonUnvan,fonTurAciklama);
-                    fundInfoRepository.save(fundInfoData);
+                    fundInfoData = fundInfoRepository.save(fundInfoData);
                 }
 
-                // Getiri değerlerini bir diziye al
-                double[] getiriler = {
-                        fundObject.optDouble("GETIRI1A"),
-                        fundObject.optDouble("GETIRI3A"),
-                        fundObject.optDouble("GETIRI6A"),
-                        fundObject.optDouble("GETIRI1Y"),
-                        dailyData.getOrDefault(fonKodu, 0.0) //dailyData mapinden günlük getiri değerleri alınır
-
+                //-------- Getiri değerlerini bir diziye al-------
+                //günlük getiri değerinin null ve 0 olma durumunu kontrol et
+                Double dailyValue = dailyData.get(fonKodu);
+                BigDecimal dailyReturn;
+                if(dailyValue == null){
+                    dailyReturn = null;
+                }else if(dailyValue == 0.0){
+                    dailyReturn = BigDecimal.ZERO;
+                }else{
+                    dailyReturn = BigDecimal.valueOf(dailyValue);
+                }
+                //diziye ekle
+                BigDecimal[] getiriler = {
+                        fundReturnControl(fundObject,"GETIRI1A"),
+                        fundReturnControl(fundObject,"GETIRI3A"),
+                        fundReturnControl(fundObject,"GETIRI6A"),
+                        fundReturnControl(fundObject,"GETIRI1Y"),
+                        dailyReturn
                 };
+
                 //FundReturns nesnelerini oluştururken ilişkileri kurun
                 for (int j = 0; j < types.size(); j++) {
                     String typeName = types.get(j);
-                    double returnValueDouble = getiriler[j];
-                    //Sayısal değeri kontrol etme
-                    if (Double.isNaN(returnValueDouble) || Double.isInfinite(returnValueDouble)) {
-                        returnValueDouble = 0.0;
-                    }
-                    BigDecimal returnValue = BigDecimal.valueOf(returnValueDouble);
+                    BigDecimal returnValue = getiriler[j];
 
                     Optional<FundReturns> existingRecord = fundReturnRepository.findByFundInfoAndReturnTypesAndDate(
                             fundInfoData,
@@ -152,6 +155,26 @@ public class FundServiceImpl implements IFundService {
         }
     }
 
+    private BigDecimal fundReturnControl(JSONObject jsonObject, String key){
+        if(jsonObject.has(key)){
+
+            //anahtar varsa o değerin null kotrolü
+            if(jsonObject.isNull(key)){
+                return null;
+            }
+            try{
+                double doubleValue = jsonObject.getDouble(key);
+                if(Double.isNaN(doubleValue) || Double.isInfinite(doubleValue)){
+                    return null;
+                }
+                return BigDecimal.valueOf(doubleValue);
+            }catch (Exception e){
+                return null; //değer sayı değilse null atanacak
+            }
+        }
+        return null; //anahtar yoksa nulll döndür
+    }
+
     @Override
     public List<FundReturnsDTO> getAllFundReturns() {
         System.out.println("Veritabanından fon getirileri listeleniyor.");
@@ -159,7 +182,7 @@ public class FundServiceImpl implements IFundService {
 
         // Verileri fon koduna göre grupla
         Map<String, List<FundReturns>> groupedByFund = fundReturns.stream()
-                .collect(Collectors.groupingBy(fr -> fr.getFundInfo().getFund_id()));
+                .collect(Collectors.groupingBy(fr -> fr.getFundInfo().getFund_code()));
 
         // Her fon grubu için tek bir DTO oluştur
         List<FundReturnsDTO> dtoList = new ArrayList<>();
@@ -175,14 +198,14 @@ public class FundServiceImpl implements IFundService {
 
     @Override
     @Transactional(readOnly = true)//metot içindeki veritabanı işlemlerinin sadece okuma amaçlı olduğunu belirtir. Bu, performans iyileştirmesi sağlar
-    public List<FundReturnsDTO> getByFundId(String fundId, LocalDate startDate, LocalDate endDate) {
+    public List<FundReturnsDTO> getByFundCode(String fundCode, LocalDate startDate, LocalDate endDate) {
         List<FundReturns> fundReturns;
         if (startDate != null && endDate != null) {
             // Tarih aralığı belirtilmişse, bu metodu çağır
-            fundReturns = fundReturnRepository.findByFundIdAndDate(fundId, startDate, endDate);
+            fundReturns = fundReturnRepository.findByFundCodeAndDate(fundCode, startDate, endDate);
         } else {
             // Tarih aralığı belirtilmemişse, sadece bugünün verilerini getir
-            fundReturns = fundReturnRepository.findByFundId(fundId, LocalDate.now());
+            fundReturns = fundReturnRepository.findByFundCode(fundCode, LocalDate.now());
         }
 
         // Gelen verileri tarihe göre gruplar
@@ -207,7 +230,7 @@ public class FundServiceImpl implements IFundService {
         for (FundReturns fr : fundReturnsList){
             if(index==0){
                 if (fr.getFundInfo() != null) {
-                    dto.setFundId(fr.getFundInfo().getFund_id());
+                    dto.setFundCode(fr.getFundInfo().getFund_code());
                     dto.setLongName(fr.getFundInfo().getLongName());
                     dto.setFund_desc(fr.getFundInfo().getFund_desc());
                     dto.setDate(fr.getDate());
@@ -216,15 +239,15 @@ public class FundServiceImpl implements IFundService {
             if(fr.getReturnTypes()!=null) {
                 Integer returnTypeId = fr.getReturnTypes().getId();
                 BigDecimal returnValue = fr.getReturnValue();
-                if (returnTypeId.equals(1)) {
+                if (returnTypeId.equals(6)) {
                     dto.setGetiri1A(returnValue);
-                } else if (returnTypeId.equals(2)) {
+                } else if (returnTypeId.equals(7)) {
                     dto.setGetiri3A(returnValue);
-                } else if (returnTypeId.equals(3)) {
+                } else if (returnTypeId.equals(8)) {
                     dto.setGetiri6A(returnValue);
-                } else if (returnTypeId.equals(4)) {
+                } else if (returnTypeId.equals(9)) {
                     dto.setGetiri1Y(returnValue);
-                } else if (returnTypeId.equals(5)) {
+                } else if (returnTypeId.equals(10)) {
                     dto.setGetiri_gunluk(returnValue);
                 }
             }

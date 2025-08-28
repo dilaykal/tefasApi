@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface IFundInfoRepository extends JpaRepository<FundInfo, String> {
-
+public interface IFundInfoRepository extends JpaRepository<FundInfo, Integer> {
+    @Query(value = "SELECT * FROM fund_info WHERE fund_code = :fonKodu", nativeQuery = true)
+    Optional<FundInfo> findByFundCode(@Param("fonKodu") String fonKodu);
 }

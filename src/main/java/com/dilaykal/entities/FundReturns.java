@@ -16,7 +16,7 @@ import java.util.Objects;
 @Data
 @Entity
 @NoArgsConstructor(force = true)
-@RequiredArgsConstructor
+//@RequiredArgsConstructor
 @Table(name= "fund_returns")
 public class FundReturns {
     @Id
@@ -31,14 +31,17 @@ public class FundReturns {
     @JoinColumn(name="return_type_id")
     private ReturnTypes returnTypes;
 
-    @NonNull
-    @Column(name = "return_value", precision = 18, scale = 10)
+    //@NonNull
+    @Column(name = "return_value",precision = 18, scale = 10)
     private BigDecimal returnValue;
 
     @Temporal(TemporalType.DATE)
-    @NonNull
     private LocalDate date;
 
+    public FundReturns(BigDecimal returnValue, LocalDate date) {
+        this.returnValue = returnValue;
+        this.date = date;
+    }
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

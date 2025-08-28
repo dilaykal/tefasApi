@@ -17,19 +17,19 @@ public interface IFundReturnRepository extends JpaRepository<FundReturns, Intege
 
     @Query(
             value = "SELECT fr.* FROM fund_returns fr " +
-                    "INNER JOIN fund_info fi ON fr.fund_id = fi.fund_id " +
+                    "INNER JOIN fund_info fi ON fr.fund_id = fi.id  " +
                     "INNER JOIN return_types rt ON fr.return_type_id  = rt.id  " +
-                    "WHERE fi.fund_id = :fundId AND fr.date = :date",
+                    "WHERE fi.fund_code = :fundCode AND fr.date = :date",
             nativeQuery = true
     )
-    List<FundReturns> findByFundId(@Param("fundId") String fundId, @Param("date") LocalDate date);
+    List<FundReturns> findByFundCode(@Param("fundCode") String fundCode, @Param("date") LocalDate date);
 
     @Query(value = "SELECT fr.* FROM fund_returns fr " +
-            "INNER JOIN fund_info fi ON fr.fund_id = fi.fund_id " +
+            "INNER JOIN fund_info fi ON fr.fund_id = fi.id  " +
             "INNER JOIN return_types rt ON fr.return_type_id = rt.id " +
-            "WHERE fi.fund_id = :fundId AND fr.date BETWEEN :startDate AND :endDate",
+            "WHERE fi.fund_code = :fundCode AND fr.date BETWEEN :startDate AND :endDate",
             nativeQuery = true)
-    List<FundReturns> findByFundIdAndDate(@Param("fundId") String fundId, @Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
+    List<FundReturns> findByFundCodeAndDate(@Param("fundCode") String fundCode, @Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
 
     Optional<FundReturns> findByFundInfoAndReturnTypesAndDate(
             FundInfo fundInfo,
@@ -38,7 +38,7 @@ public interface IFundReturnRepository extends JpaRepository<FundReturns, Intege
     );
 
     @Query(value = "SELECT fr.* FROM fund_returns fr " +
-            "INNER JOIN fund_info fi ON fr.fund_id = fi.fund_id " +
+            "INNER JOIN fund_info fi ON fr.fund_id = fi.id  " +
             "INNER JOIN return_types rt ON fr.return_type_id = rt.id " ,
             nativeQuery = true)
     List<FundReturns> findAllWithAllDetails();
