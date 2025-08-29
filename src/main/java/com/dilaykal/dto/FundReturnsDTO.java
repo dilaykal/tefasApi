@@ -1,7 +1,6 @@
 // FundReturnsDTO.java
 package com.dilaykal.dto;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 
@@ -13,5 +12,5 @@ public class FundReturnsDTO {
     private String longName;
     private String fund_desc;
     private LocalDate date;
-    private ArrayList<ReturnTypesDTO> returns;
+    private ArrayList<ReturnDataDTO> returns;
 }

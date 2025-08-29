@@ -1,7 +1,7 @@
 package com.dilaykal.service.impl;
 
 import com.dilaykal.dto.FundReturnsDTO;
-import com.dilaykal.dto.ReturnTypesDTO;
+import com.dilaykal.dto.ReturnDataDTO;
 import com.dilaykal.entities.ReturnTypes;
 import com.dilaykal.entities.FundInfo;
 import com.dilaykal.model.FundPrice;
@@ -11,12 +11,11 @@ import com.dilaykal.model.DateUtils;
 import com.dilaykal.repository.IFundInfoRepository;
 import com.dilaykal.repository.IFundReturnRepository;
 import com.dilaykal.repository.IReturnTypeRepository;
-import com.dilaykal.repository.ITefasApiRepository;
+import com.dilaykal.service.IFetchDataService;
 import com.dilaykal.service.IFundService;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cglib.core.Local;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,7 +28,7 @@ import java.util.stream.Collectors;
 @Service
 public class FundServiceImpl implements IFundService {
     @Autowired
-    private ITefasApiRepository tefasApiRepository;
+    private IFetchDataService tefasApiRepository;
     @Autowired
     private IFundInfoRepository fundInfoRepository;
     @Autowired
@@ -220,7 +219,7 @@ public class FundServiceImpl implements IFundService {
     // DTO'ya dönüştürme metodu
     private FundReturnsDTO convertToDTO(List<FundReturns> fundReturnsList) {
         FundReturnsDTO dto = new FundReturnsDTO();
-        ArrayList<ReturnTypesDTO> returnDataList = new ArrayList<>();
+        ArrayList<ReturnDataDTO> returnDataList = new ArrayList<>();
 
         int index=0;
         for (FundReturns fr : fundReturnsList){
@@ -235,7 +234,7 @@ public class FundServiceImpl implements IFundService {
             }
             // getiri bilgileri
             if(fr.getReturnTypes()!=null) {
-                ReturnTypesDTO returnTypeData = new ReturnTypesDTO();
+                ReturnDataDTO returnTypeData = new ReturnDataDTO();
                 returnTypeData.setDescription(fr.getReturnTypes().getDescription());
                 returnTypeData.setValue(fr.getReturnValue());
 

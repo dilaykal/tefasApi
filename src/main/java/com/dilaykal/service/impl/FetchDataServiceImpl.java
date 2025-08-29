@@ -1,18 +1,17 @@
-package com.dilaykal.repository.impl;
+package com.dilaykal.service.impl;
 
 import com.dilaykal.model.DateUtils;
-import com.dilaykal.repository.ITefasApiRepository;
+import com.dilaykal.service.IFetchDataService;
 import org.springframework.stereotype.Repository;
 
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 @Repository
-public class TefasApiRepositoryImpl implements ITefasApiRepository {
+public class FetchDataServiceImpl implements IFetchDataService {
     private static final String URL_MONTHLY = "https://www.tefas.gov.tr/api/DB/BindComparisonFundReturns";
     private static final String URL_DAILY = "https://www.tefas.gov.tr/api/DB/BindHistoryInfo";
     private final HttpClient client = HttpClient.newHttpClient();
