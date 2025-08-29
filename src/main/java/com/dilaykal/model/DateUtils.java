@@ -16,17 +16,6 @@ public class DateUtils {
         officialHolidays.add(LocalDate.of(2025, 4, 23));
         // Emek ve Dayanışma Günü
         officialHolidays.add(LocalDate.of(2025, 5, 1));
-        // Ramazan Bayramı (örnek tarihler)
-        officialHolidays.add(LocalDate.of(2025, 3, 30));
-        officialHolidays.add(LocalDate.of(2025, 3, 31));
-        officialHolidays.add(LocalDate.of(2025, 4, 1));
-        // Demokrasi ve Milli Birlik Günü
-        officialHolidays.add(LocalDate.of(2025, 7, 15));
-        // Kurban Bayramı (örnek tarihler)
-        officialHolidays.add(LocalDate.of(2025, 6, 6));
-        officialHolidays.add(LocalDate.of(2025, 6, 7));
-        officialHolidays.add(LocalDate.of(2025, 6, 8));
-        officialHolidays.add(LocalDate.of(2025, 6, 9));
         // Zafer Bayramı
         officialHolidays.add(LocalDate.of(2025, 8, 30));
         // Cumhuriyet Bayramı

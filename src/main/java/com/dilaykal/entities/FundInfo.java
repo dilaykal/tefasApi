@@ -22,9 +22,11 @@ public class FundInfo {
     @Column(length = 255)
     @NonNull
     private String longName;
+
     @Column(length = 255)
     @NonNull
     private String fund_desc;
+
     @OneToMany(mappedBy = "fundInfo",cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<FundReturns> fundReturns;
 

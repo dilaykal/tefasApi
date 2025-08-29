@@ -1,6 +1,7 @@
 package com.dilaykal.service.impl;
 
 import com.dilaykal.dto.FundReturnsDTO;
+import com.dilaykal.dto.ReturnTypesDTO;
 import com.dilaykal.entities.ReturnTypes;
 import com.dilaykal.entities.FundInfo;
 import com.dilaykal.model.FundPrice;
@@ -15,6 +16,7 @@ import com.dilaykal.service.IFundService;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cglib.core.Local;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,7 +39,6 @@ public class FundServiceImpl implements IFundService {
 
     @Override
     @Transactional
-    //@Scheduled(cron = "0 0 18 * * ?")
     public void fetchAndSaveAllFundReturns() {
         try{
             LocalDate currentDate = LocalDate.now();
@@ -47,9 +48,6 @@ public class FundServiceImpl implements IFundService {
 
             //Günlük verilerin tutulduğu map
             Map<String, Double> dailyData = getFundDaily(dailyResponse);
-
-            JSONObject mainObject = new JSONObject(monthlyResponse.body());
-            JSONArray dataArray = mainObject.getJSONArray("data");
 
             //ReturnTypes objelerini veritabanında var mı diye kontrol et
             List<String> types = Arrays.asList("1 Aylık Getiri", "3 Aylık Getiri", "6 Aylık Getiri", "1 Yıllık Getiri", "Günlük Getiri");
@@ -74,9 +72,11 @@ public class FundServiceImpl implements IFundService {
                     returnTypesMap.put(type.getDescription(), type);
                 }
             }
-
             //FundReturns listelerini döngü öncesinde oluşturun
             List<FundReturns> returnDataList = new ArrayList<>();
+
+            JSONObject mainObject = new JSONObject(monthlyResponse.body());
+            JSONArray dataArray = mainObject.getJSONArray("data");
 
             for(int i=0; i<dataArray.length();i++){
                 JSONObject fundObject = dataArray.getJSONObject(i);
@@ -93,6 +93,7 @@ public class FundServiceImpl implements IFundService {
                     fundInfoData = existingFundInfo.get();
                 }else{//fon koduna ait kayıt yoksa yeni nesne oluşturup veritabanına kaydedilir
                     fundInfoData = new FundInfo(fonKodu,fonUnvan,fonTurAciklama);
+                    //veritabanına kaydedildikten sonra oluşan id değerine erişebilir
                     fundInfoData = fundInfoRepository.save(fundInfoData);
                 }
 
@@ -102,8 +103,6 @@ public class FundServiceImpl implements IFundService {
                 BigDecimal dailyReturn;
                 if(dailyValue == null){
                     dailyReturn = null;
-                }else if(dailyValue == 0.0){
-                    dailyReturn = BigDecimal.ZERO;
                 }else{
                     dailyReturn = BigDecimal.valueOf(dailyValue);
                 }
@@ -144,7 +143,7 @@ public class FundServiceImpl implements IFundService {
                 }
 
             }
-            //fundInfoRepository.saveAll(infoDataList);
+
             fundReturnRepository.saveAll(returnDataList);
             System.out.println("Tüm veriler başarıyla kaydedildi.");
 
@@ -164,9 +163,6 @@ public class FundServiceImpl implements IFundService {
             }
             try{
                 double doubleValue = jsonObject.getDouble(key);
-                if(Double.isNaN(doubleValue) || Double.isInfinite(doubleValue)){
-                    return null;
-                }
                 return BigDecimal.valueOf(doubleValue);
             }catch (Exception e){
                 return null; //değer sayı değilse null atanacak
@@ -193,11 +189,9 @@ public class FundServiceImpl implements IFundService {
         });
 
         return dtoList;
-
     }
 
     @Override
-    @Transactional(readOnly = true)//metot içindeki veritabanı işlemlerinin sadece okuma amaçlı olduğunu belirtir. Bu, performans iyileştirmesi sağlar
     public List<FundReturnsDTO> getByFundCode(String fundCode, LocalDate startDate, LocalDate endDate) {
         List<FundReturns> fundReturns;
         if (startDate != null && endDate != null) {
@@ -226,8 +220,11 @@ public class FundServiceImpl implements IFundService {
     // DTO'ya dönüştürme metodu
     private FundReturnsDTO convertToDTO(List<FundReturns> fundReturnsList) {
         FundReturnsDTO dto = new FundReturnsDTO();
+        ArrayList<ReturnTypesDTO> returnDataList = new ArrayList<>();
+
         int index=0;
         for (FundReturns fr : fundReturnsList){
+            // genel bilgiler aynı olduğu için tek sefer alınıyor
             if(index==0){
                 if (fr.getFundInfo() != null) {
                     dto.setFundCode(fr.getFundInfo().getFund_code());
@@ -236,23 +233,17 @@ public class FundServiceImpl implements IFundService {
                     dto.setDate(fr.getDate());
                 }
             }
+            // getiri bilgileri
             if(fr.getReturnTypes()!=null) {
-                Integer returnTypeId = fr.getReturnTypes().getId();
-                BigDecimal returnValue = fr.getReturnValue();
-                if (returnTypeId.equals(6)) {
-                    dto.setGetiri1A(returnValue);
-                } else if (returnTypeId.equals(7)) {
-                    dto.setGetiri3A(returnValue);
-                } else if (returnTypeId.equals(8)) {
-                    dto.setGetiri6A(returnValue);
-                } else if (returnTypeId.equals(9)) {
-                    dto.setGetiri1Y(returnValue);
-                } else if (returnTypeId.equals(10)) {
-                    dto.setGetiri_gunluk(returnValue);
-                }
+                ReturnTypesDTO returnTypeData = new ReturnTypesDTO();
+                returnTypeData.setDescription(fr.getReturnTypes().getDescription());
+                returnTypeData.setValue(fr.getReturnValue());
+
+                returnDataList.add(returnTypeData);
             }
             index++;
         }
+        dto.setReturns(returnDataList);
         return dto;
     }
 
@@ -299,9 +290,9 @@ public class FundServiceImpl implements IFundService {
             double todayPrice = prices.getOrDefault(today, 0.0);
             double yesterdayPrice = prices.getOrDefault(lastWorkingDay, 0.0);
 
-            double dailyReturn;
+            Double dailyReturn;
             if(yesterdayPrice == 0){
-                dailyReturn=0;
+                dailyReturn=null;
             }else{
                 dailyReturn = ((todayPrice-yesterdayPrice)/ yesterdayPrice)*100;
             }

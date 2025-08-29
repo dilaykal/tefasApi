@@ -5,7 +5,6 @@ import lombok.Data;
 
 @Data
 public class FundInfoDTO {
-    private String fundId;
     private String longName;
     private String fundDesc;
     private Set<FundReturnsDTO> fundReturns;

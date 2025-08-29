@@ -18,9 +18,11 @@ public class ReturnTypes {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
+
     @Column(length = 255)
     @NonNull
     private String description;
+
     @OneToMany(mappedBy = "returnTypes",cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<FundReturns> fundReturns;
 

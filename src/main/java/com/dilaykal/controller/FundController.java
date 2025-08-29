@@ -1,6 +1,5 @@
-package com.dilaykal.controller.impl;
+package com.dilaykal.controller;
 
-import com.dilaykal.controller.IFundController;
 import com.dilaykal.dto.FundReturnsDTO;
 import com.dilaykal.service.IFundService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,22 +12,22 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/funds")
-public class FundControllerImpl implements IFundController {
+public class FundController {
     @Autowired
     private IFundService fundService;
 
     @GetMapping("/list-all")
-    @Override
     public ResponseEntity<List<FundReturnsDTO>>  getFundReturns() {
         List<FundReturnsDTO> funds =fundService.getAllFundReturns();
         return ResponseEntity.ok(funds);
     }
-    @Override
+
     @GetMapping("/list/{fundCode}")
-    public List<FundReturnsDTO> getFundReturnsByFundCode(@PathVariable String fundCode,
+    public ResponseEntity<List<FundReturnsDTO>> getFundReturnsByFundCode(@PathVariable String fundCode,
                                                          @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
                                                          @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
-        return fundService.getByFundCode(fundCode,startDate,endDate);
+        List<FundReturnsDTO> fundList = fundService.getByFundCode(fundCode,startDate,endDate);
+        return ResponseEntity.ok(fundList);
     }
 
 
