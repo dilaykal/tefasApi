@@ -43,5 +43,13 @@ public interface IFundReturnRepository extends JpaRepository<FundReturns, Intege
             "WHERE CAST(fr.date AS DATE) = CAST(GETDATE() AS DATE)",
             nativeQuery = true)
     List<FundReturns> findAllWithAllDetails();
+    @Query (
+            value="SELECT fr.* FROM fund_returns fr " +
+                    "INNER JOIN fund_info fi ON fr.fund_id = fi.id  " +
+                    "INNER JOIN return_types rt ON fr.return_type_id = rt.id  " +
+                    "WHERE fi.fund_code = :fundCode AND fr.date = :date AND rt.description = :returnDescription",
+            nativeQuery = true
+    )
+    Optional<FundReturns> findByFundCodeAndReturnType(@Param("fundCode")String fundCode,@Param("date") LocalDate date,@Param("returnDescription") String returnDescription);
 
 }

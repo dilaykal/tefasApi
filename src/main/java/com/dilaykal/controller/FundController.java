@@ -1,6 +1,7 @@
 package com.dilaykal.controller;
 
 import com.dilaykal.dto.FundReturnsDTO;
+import com.dilaykal.dto.ReturnDataDTO;
 import com.dilaykal.service.IFundService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -28,6 +29,19 @@ public class FundController {
                                                          @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
         List<FundReturnsDTO> fundList = fundService.getByFundCode(fundCode,startDate,endDate);
         return ResponseEntity.ok(fundList);
+    }
+    @PutMapping("update/{fundCode}")
+    public ResponseEntity<Void> updatedReturns(
+          @PathVariable String fundCode,
+          @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+          @RequestBody List<ReturnDataDTO> updatedReturns
+    ){
+        try{
+            fundService.updatedFundReturns(fundCode,date,updatedReturns);
+            return ResponseEntity.ok().build();
+        }catch (RuntimeException e){
+            return ResponseEntity.notFound().build();
+        }
     }
 
 

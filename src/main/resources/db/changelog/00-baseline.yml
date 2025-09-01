@@ -1,0 +1,7 @@
+databaseChangeLog:
+  - changeSet:
+      id: baseline-schema
+      author: dilaykal
+      changes:
+        - tagDatabase:
+            tag: baseline

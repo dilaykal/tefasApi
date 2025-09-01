@@ -216,6 +216,41 @@ public class FundServiceImpl implements IFundService {
         return dtoList;
     }
 
+    @Override
+    public void updatedFundReturns(String fundCode, LocalDate date, List<ReturnDataDTO> updatedReturns) {
+        for(ReturnDataDTO updatedReturn : updatedReturns){
+            FundReturns existingFund = fundReturnRepository.findByFundCodeAndReturnType(fundCode,date,updatedReturn.getDescription()).orElseThrow(()-> new RuntimeException("Belitrilen fona ait bilgiler bulunamadı." + updatedReturn.getDescription()));
+            existingFund.setReturnValue(updatedReturn.getValue());
+            fundReturnRepository.save(existingFund);
+
+        }
+    }
+    /*
+    @Override
+    public void updatedFundReturns(String fundCode, LocalDate date, List<ReturnDataDTO> updatedReturns) {
+        // 1. İlgili tarihe ait fonu tek seferde bul
+        FundReturns existingFund = fundReturnRepository.findByFundCodeAndDate(fundCode, date)
+                .orElseThrow(() -> new RuntimeException("Belirtilen fona ait bilgiler bulunamadı."));
+
+        // 2. Fonun içindeki getiriler listesini al
+        List<ReturnData> currentReturns = existingFund.getReturns();
+
+        // 3. updatedReturns listesi üzerinde dönerek güncellemeyi yap
+        for (ReturnDataDTO updatedReturn : updatedReturns) {
+            for (ReturnData currentReturn : currentReturns) {
+                if (currentReturn.getDescription().equals(updatedReturn.getDescription())) {
+                    // Sadece ilgili getirinin değerini güncelle
+                    currentReturn.setValue(updatedReturn.getValue());
+                    break; // Eşleşme bulununca döngüden çık
+                }
+            }
+        }
+
+        // 4. Tek seferde kaydet
+        fundReturnRepository.save(existingFund);
+    }
+*/
+
     // DTO'ya dönüştürme metodu
     private FundReturnsDTO convertToDTO(List<FundReturns> fundReturnsList) {
         FundReturnsDTO dto = new FundReturnsDTO();
