@@ -4,7 +4,6 @@ import com.dilaykal.dto.FundReturnsDTO;
 import com.dilaykal.dto.ReturnDataDTO;
 import com.dilaykal.entities.ReturnTypes;
 import com.dilaykal.entities.FundInfo;
-import com.dilaykal.model.FundPrice;
 import com.dilaykal.entities.FundReturns;
 import com.dilaykal.model.DateUtils;
 
@@ -40,120 +39,143 @@ public class FundServiceImpl implements IFundService {
     @Transactional
     public void fetchAndSaveAllFundReturns() {
         try{
-            LocalDate currentDate = LocalDate.now();
-
             HttpResponse<String> monthlyResponse =tefasApiRepository.getMonthlyReturnsData();
             HttpResponse<String> dailyResponse  =tefasApiRepository.getDailyReturnsData();
-
+            LocalDate today = LocalDate.now(ZoneId.systemDefault());
             //Günlük verilerin tutulduğu map
-            Map<String, Double> dailyData = getFundDaily(dailyResponse);
-
-            //ReturnTypes objelerini veritabanında var mı diye kontrol et
-            List<String> types = Arrays.asList("1 Aylık Getiri", "3 Aylık Getiri", "6 Aylık Getiri", "1 Yıllık Getiri", "Günlük Getiri");
-            //Açıklamaları ile kaydedilecek returnTypes mapi
-            Map<String, ReturnTypes> returnTypesMap = new HashMap<>();
-
-            // Eğer veritabanında ReturnTypes yoksa, onları oluştur ve kaydet
-            if (returnTypeRepository.count() == 0) {
-                System.out.println("ReturnTypes tablosu boş, veriler ekleniyor.");
-                List<ReturnTypes> returnTypesToSave = new ArrayList<>();
-                for (String type_desc : types) {
-                    ReturnTypes returnTypesData = new ReturnTypes(type_desc);
-                    returnTypesToSave.add(returnTypesData);
-                    returnTypesMap.put(type_desc, returnTypesData);
-                }
-                returnTypeRepository.saveAll(returnTypesToSave);
-            } else {
-                // Eğer veriler zaten varsa, veritabanından çekip map'e doldur
-                System.out.println("ReturnTypes tablosu dolu, mevcut veriler kullanılıyor.");
-                List<ReturnTypes> existingTypes = returnTypeRepository.findAll();
-                for (ReturnTypes type : existingTypes) {
-                    returnTypesMap.put(type.getDescription(), type);
-                }
-            }
-            //FundReturns listelerini döngü öncesinde oluşturun
-            List<FundReturns> returnDataList = new ArrayList<>();
+            Map<String, Double> dailyData = getFundDaily(dailyResponse,today);
+            //ReturnTypes'ı kontrol etmek için dönen map
+            Map<String, ReturnTypes> returnTypesMap = initializeReturnTypes();
 
             JSONObject mainObject = new JSONObject(monthlyResponse.body());
             JSONArray dataArray = mainObject.getJSONArray("data");
 
+            //FundReturns listesini kaydetmek için liste oluştur
+            List<FundReturns> returnsToSave = new ArrayList<>();
+            //Json yanıtını dolaş ve verileri al
             for(int i=0; i<dataArray.length();i++){
                 JSONObject fundObject = dataArray.getJSONObject(i);
+                //FundInfo ile ilgili bilfileri alır ve kaydeder
+                FundInfo fundInfo = processFundInfo(fundObject);
 
-                String fonKodu = fundObject.getString("FONKODU");
-                String fonUnvan = fundObject.getString("FONUNVAN");
-                String fonTurAciklama = fundObject.getString("FONTURACIKLAMA");
-
-                //Fon koduna sahip FundInfo kaydı var mı veritabanında
-                Optional<FundInfo> existingFundInfo= fundInfoRepository.findByFundCode(fonKodu);
-                FundInfo fundInfoData;
-                //Fon veritabanına mevcutsa mevcut kayıt alınır ve değişkene atanır
-                if(existingFundInfo.isPresent()){
-                    fundInfoData = existingFundInfo.get();
-                }else{//fon koduna ait kayıt yoksa yeni nesne oluşturup veritabanına kaydedilir
-                    fundInfoData = new FundInfo(fonKodu,fonUnvan,fonTurAciklama);
-                    //veritabanına kaydedildikten sonra oluşan id değerine erişebilir
-                    fundInfoData = fundInfoRepository.save(fundInfoData);
-                }
-
-                //-------- Getiri değerlerini bir diziye al-------
-                //günlük getiri değerinin null ve 0 olma durumunu kontrol et
-                Double dailyValue = dailyData.get(fonKodu);
-                BigDecimal dailyReturn;
-                if(dailyValue == null){
-                    dailyReturn = null;
-                }else{
-                    dailyReturn = BigDecimal.valueOf(dailyValue);
-                }
-                //diziye ekle
-                BigDecimal[] getiriler = {
-                        fundReturnControl(fundObject,"GETIRI1A"),
-                        fundReturnControl(fundObject,"GETIRI3A"),
-                        fundReturnControl(fundObject,"GETIRI6A"),
-                        fundReturnControl(fundObject,"GETIRI1Y"),
-                        dailyReturn
-                };
-
-                //FundReturns nesnelerini oluştururken ilişkileri kurun
-                for (int j = 0; j < types.size(); j++) {
-                    String typeName = types.get(j);
-                    BigDecimal returnValue = getiriler[j];
-
-                    Optional<FundReturns> existingRecord = fundReturnRepository.findByFundInfoAndReturnTypesAndDate(
-                            fundInfoData,
-                            returnTypesMap.get(typeName),
-                            currentDate
-                    );
-
-                    FundReturns fundReturnData;
-                    if (existingRecord.isPresent()) {
-                        //Eğer kayıt varsa, mevcut olanı güncelle
-                        fundReturnData = existingRecord.get();
-                        fundReturnData.setReturnValue(returnValue);
-                    } else {
-                        //Eğer kayıt yoksa, yeni bir FundReturns nesnesi oluştur
-                        fundReturnData = new FundReturns(returnValue, currentDate);
-                        fundReturnData.setFundInfo(fundInfoData);
-                        fundReturnData.setReturnTypes(returnTypesMap.get(typeName));
-                    }
-
-                    // Listeye ekle
-                    returnDataList.add(fundReturnData);
-                }
+                //getiri verilerini FundReturns listesine dönüştürür
+                List<FundReturns> fundReturns = processFundReturns(fundObject, fundInfo, returnTypesMap, dailyData);
+                returnsToSave.addAll(fundReturns);
 
             }
-
-            fundReturnRepository.saveAll(returnDataList);
+            // verileri kaydet
+            fundReturnRepository.saveAll(returnsToSave);
             System.out.println("Tüm veriler başarıyla kaydedildi.");
 
         } catch (Exception e) {
             System.err.println("API'den veri alınırken hata oluştu: " + e.getMessage());
             e.printStackTrace();
-            throw new RuntimeException("Veri kaydetme işlemi başarısız oldu.", e); // Hatayı yukarı fırlatın
+            throw new RuntimeException("Veri kaydetme işlemi başarısız oldu.", e);
         }
     }
 
-    private BigDecimal fundReturnControl(JSONObject jsonObject, String key){
+    protected Map<String, ReturnTypes> initializeReturnTypes(){
+        //ReturnTypes objelerini veritabanında var mı diye kontrol et
+        List<String> types = Arrays.asList("1 Aylık Getiri", "3 Aylık Getiri", "6 Aylık Getiri", "1 Yıllık Getiri", "Günlük Getiri");
+        //Açıklamaları ile kaydedilecek returnTypes mapi
+        Map<String, ReturnTypes> returnTypesMap = new HashMap<>();
+
+        // Eğer veritabanında ReturnTypes yoksa, onları oluştur ve kaydet
+        if (returnTypeRepository.count() == 0) {
+            System.out.println("ReturnTypes tablosu boş, veriler ekleniyor.");
+            List<ReturnTypes> returnTypesToSave = new ArrayList<>();
+            for (String type_desc : types) {
+                ReturnTypes returnTypesData = new ReturnTypes(type_desc);
+                returnTypesToSave.add(returnTypesData);
+                returnTypesMap.put(type_desc, returnTypesData);
+            }
+            returnTypeRepository.saveAll(returnTypesToSave);
+        } else {
+            // Eğer veriler zaten varsa, veritabanından çekip map'e doldur
+            System.out.println("ReturnTypes tablosu dolu, mevcut veriler kullanılıyor.");
+            List<ReturnTypes> existingTypes = returnTypeRepository.findAll();
+            for (ReturnTypes type : existingTypes) {
+                returnTypesMap.put(type.getDescription(), type);
+            }
+        }
+        return returnTypesMap;
+    }
+
+    //FundInfo ile ilgili bilgileri json yanıtından alır ve kaydeder
+    protected FundInfo processFundInfo(JSONObject fundObject){
+        String fonKodu = fundObject.getString("FONKODU");
+        String fonUnvan = fundObject.getString("FONUNVAN");
+        String fonTurAciklama = fundObject.getString("FONTURACIKLAMA");
+
+        //Fon koduna sahip FundInfo kaydı var mı veritabanında
+        Optional<FundInfo> existingFundInfo= fundInfoRepository.findByFundCode(fonKodu);
+        //Fon veritabanına mevcutsa mevcut kayıt alınır ve değişkene atanır
+        if(existingFundInfo.isPresent()){
+            return existingFundInfo.get();
+        }else{//fon koduna ait kayıt yoksa yeni nesne oluşturup veritabanına kaydedilir
+            FundInfo newfundInfo = new FundInfo(fonKodu,fonUnvan,fonTurAciklama);
+            //veritabanına kaydedildikten sonra oluşan id değerine erişebilir
+            return fundInfoRepository.save(newfundInfo);
+        }
+    }
+
+    //FUND_RETURNS tablosu diğer tablolarla bağlantılı bilgiler içerdiği için bu fonksiyonda parametre olarak fundınfo ve returnTypesMap i alıyoruz.
+    //Veritabanında bu tabloları kontrol edip doldurma işlemini yapacak.
+    //Bu fonksiyon hem getiri değerlerini json yanıtından alıp kaydediyor.
+    //Aynı zamanda tabloya kaydederken fund_ınfo ve return_types tablolarını ile de ilişki kuruyor.
+    protected List<FundReturns> processFundReturns(JSONObject fundObject, FundInfo fundInfo, Map<String, ReturnTypes> returnTypesMap, Map<String, Double> dailyData){
+        LocalDate currentDate = LocalDate.now();
+        //FundReturns listelerini döngü öncesinde oluşturun
+        List<FundReturns> returnsList = new ArrayList<>();
+        List<String> types = Arrays.asList("1 Aylık Getiri", "3 Aylık Getiri", "6 Aylık Getiri", "1 Yıllık Getiri", "Günlük Getiri");
+
+        //-- Getiri değerlerini bir diziye al--
+        //günlük getiri değerinin null ve 0 olma durumunu kontrol et
+        Double dailyValue = dailyData.get(fundObject.getString("FONKODU"));
+        BigDecimal dailyReturn;
+        if(dailyValue == null){
+            dailyReturn = null;
+        }else{
+            dailyReturn = BigDecimal.valueOf(dailyValue);
+        }
+        //diziye ekle
+        BigDecimal[] getiriler = {
+                fundReturnControl(fundObject,"GETIRI1A"),
+                fundReturnControl(fundObject,"GETIRI3A"),
+                fundReturnControl(fundObject,"GETIRI6A"),
+                fundReturnControl(fundObject,"GETIRI1Y"),
+                dailyReturn
+        };
+
+        //FundReturns nesnelerini oluştururken ilişkileri kurun
+        for (int j = 0; j < types.size(); j++) {
+            String typeName = types.get(j);
+            BigDecimal returnValue = getiriler[j];
+
+            Optional<FundReturns> existingRecord = fundReturnRepository.findByFundInfoAndReturnTypesAndDate(
+                    fundInfo,
+                    returnTypesMap.get(typeName),
+                    currentDate
+            );
+
+            FundReturns fundReturnData;
+            if (existingRecord.isPresent()) {
+                //Eğer kayıt varsa, mevcut olanı güncelle
+                fundReturnData = existingRecord.get();
+                fundReturnData.setReturnValue(returnValue);
+            } else {
+                //Eğer kayıt yoksa, yeni bir FundReturns nesnesi oluştur
+                fundReturnData = new FundReturns(returnValue, currentDate);
+                fundReturnData.setFundInfo(fundInfo);
+                fundReturnData.setReturnTypes(returnTypesMap.get(typeName));
+            }
+
+            returnsList.add(fundReturnData);
+        }
+        return returnsList;
+    }
+
+    protected BigDecimal fundReturnControl(JSONObject jsonObject, String key){
         if(jsonObject.has(key)){
 
             //anahtar varsa o değerin null kotrolü
@@ -167,7 +189,7 @@ public class FundServiceImpl implements IFundService {
                 return null; //değer sayı değilse null atanacak
             }
         }
-        return null; //anahtar yoksa nulll döndür
+        return null; //anahtar olmadığı durum
     }
 
     @Override
@@ -194,22 +216,22 @@ public class FundServiceImpl implements IFundService {
     public List<FundReturnsDTO> getByFundCode(String fundCode, LocalDate startDate, LocalDate endDate) {
         List<FundReturns> fundReturns;
         if (startDate != null && endDate != null) {
-            // Tarih aralığı belirtilmişse, bu metodu çağır
+            // Tarih aralığı belirtilmişse
             fundReturns = fundReturnRepository.findByFundCodeAndDate(fundCode, startDate, endDate);
         } else {
-            // Tarih aralığı belirtilmemişse, sadece bugünün verilerini getir
+            // Tarih aralığı belirtilmemişse
             fundReturns = fundReturnRepository.findByFundCode(fundCode, LocalDate.now());
         }
 
-        // Gelen verileri tarihe göre gruplar
+        // Gelen verileri tarihe göre grupla
         Map<LocalDate, List<FundReturns>> groupedByDate = fundReturns.stream()
                 .collect(Collectors.groupingBy(FundReturns::getDate));
 
-        // 3. Her bir tarih grubu için tek bir DTO oluşturur
+        // Her bir tarih grubu için tek bir DTO oluştur
         List<FundReturnsDTO> dtoList = new ArrayList<>();
 
         groupedByDate.forEach((date, returnsForDate) -> {
-            // Her bir tarih grubu için convertToDTO metodunu çağırır
+            // Her bir tarih grubu için convertToDTO metodunu çağır
             dtoList.add(convertToDTO(returnsForDate));
         });
 
@@ -225,34 +247,8 @@ public class FundServiceImpl implements IFundService {
 
         }
     }
-    /*
-    @Override
-    public void updatedFundReturns(String fundCode, LocalDate date, List<ReturnDataDTO> updatedReturns) {
-        // 1. İlgili tarihe ait fonu tek seferde bul
-        FundReturns existingFund = fundReturnRepository.findByFundCodeAndDate(fundCode, date)
-                .orElseThrow(() -> new RuntimeException("Belirtilen fona ait bilgiler bulunamadı."));
 
-        // 2. Fonun içindeki getiriler listesini al
-        List<ReturnData> currentReturns = existingFund.getReturns();
-
-        // 3. updatedReturns listesi üzerinde dönerek güncellemeyi yap
-        for (ReturnDataDTO updatedReturn : updatedReturns) {
-            for (ReturnData currentReturn : currentReturns) {
-                if (currentReturn.getDescription().equals(updatedReturn.getDescription())) {
-                    // Sadece ilgili getirinin değerini güncelle
-                    currentReturn.setValue(updatedReturn.getValue());
-                    break; // Eşleşme bulununca döngüden çık
-                }
-            }
-        }
-
-        // 4. Tek seferde kaydet
-        fundReturnRepository.save(existingFund);
-    }
-*/
-
-    // DTO'ya dönüştürme metodu
-    private FundReturnsDTO convertToDTO(List<FundReturns> fundReturnsList) {
+    protected FundReturnsDTO convertToDTO(List<FundReturns> fundReturnsList) {
         FundReturnsDTO dto = new FundReturnsDTO();
         ArrayList<ReturnDataDTO> returnDataList = new ArrayList<>();
 
@@ -281,27 +277,24 @@ public class FundServiceImpl implements IFundService {
         return dto;
     }
 
-    private Map<String,Double> getFundDaily(HttpResponse<String> response){
+    protected Map<String,Double> getFundDaily(HttpResponse<String> response, LocalDate today){
         System.out.println("API'den gelen günlük getiri ham verisi: " + response.body());
 
         JSONObject mainObject = new JSONObject(response.body());
 
-        //data anahtarı ile array dizisine ulaş
+        //array dizisine ulaş
         JSONArray dataArray = mainObject.getJSONArray("data");
-        // Fon verilerini geçici olarak saklamak için Map kullan
-        Map<String, FundPrice> fundDataMap = new HashMap<>();
+
         Map<String, Double> dailyReturnMap = new HashMap<>();
-        // Geçici olarak tüm fonları ve tarihe göre fiyatlarını tutacak bir harita
+        // Geçici olarak tüm fonları ve tarihe göre fiyatlarını tutacak bir map
         Map<String, Map<LocalDate, Double>> pricesByDate = new HashMap<>();
 
-        // Bugün ve son işlem gününü bul
-        LocalDate today = LocalDate.now(ZoneId.systemDefault());
+        //son işlem gününü bul
         LocalDate lastWorkingDay = today.minusDays(1);
 
         while (!DateUtils.isWorkingDay(lastWorkingDay)) {
             lastWorkingDay = lastWorkingDay.minusDays(1);
         }
-
 
         for(int i=0; i<dataArray.length();i++) {
             JSONObject fundObject = dataArray.getJSONObject(i);
