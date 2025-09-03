@@ -2,6 +2,7 @@ package com.dilaykal.service.impl;
 
 import com.dilaykal.model.DateUtils;
 import com.dilaykal.service.IFetchDataService;
+import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Repository;
 
 import java.net.URI;
@@ -14,7 +15,11 @@ import java.time.format.DateTimeFormatter;
 public class FetchDataServiceImpl implements IFetchDataService {
     private static final String URL_MONTHLY = "https://www.tefas.gov.tr/api/DB/BindComparisonFundReturns";
     private static final String URL_DAILY = "https://www.tefas.gov.tr/api/DB/BindHistoryInfo";
-    private final HttpClient client = HttpClient.newHttpClient();
+    private final HttpClient client;
+
+    public FetchDataServiceImpl(HttpClient client) {
+        this.client = client;
+    }
 
     private HttpResponse<String> makeRequest(String url, String body) throws Exception {
         HttpRequest request = HttpRequest.newBuilder()

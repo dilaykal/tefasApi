@@ -17,20 +17,20 @@ public class FundController {
     @Autowired
     private IFundService fundService;
 
-    @GetMapping("/list-all")
+    @GetMapping("")
     public ResponseEntity<List<FundReturnsDTO>>  getFundReturns() {
         List<FundReturnsDTO> funds =fundService.getAllFundReturns();
         return ResponseEntity.ok(funds);
     }
 
-    @GetMapping("/list/{fundCode}")
+    @GetMapping("/{fundCode}")
     public ResponseEntity<List<FundReturnsDTO>> getFundReturnsByFundCode(@PathVariable String fundCode,
                                                          @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
                                                          @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
         List<FundReturnsDTO> fundList = fundService.getByFundCode(fundCode,startDate,endDate);
         return ResponseEntity.ok(fundList);
     }
-    @PutMapping("update/{fundCode}")
+    @PutMapping("/{fundCode}")
     public ResponseEntity<Void> updatedReturns(
           @PathVariable String fundCode,
           @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
